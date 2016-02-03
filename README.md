@@ -1,16 +1,10 @@
 
 # Red Hat Access Insights Client
 
-   This is the container_mode branch of insights-client.  The instructions below don't explain
-   how to use the container mode stuff (yet), but these instructions are only on the container_mode
-   branch for now.
-
 ## Fetching
 
-   When you clone this, make sure you get the container_mode branch:
-
    ```bash
-   git clone --branch container_mode https://github.com/gavin-romig-koch/insights-client.git
+   git clone https://github.com/gavin-romig-koch/insights-client.git
    ```
 
 ## To get this running:
@@ -73,4 +67,4 @@
 ## Todo:
   
     * Figure out how to use config directly from this directory.
-    * move the install_and_run scrip into the Makefile
+    * Move the install_and_run scrip into the Makefile.
