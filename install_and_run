@@ -4,35 +4,6 @@
 #   it does do a 'python setup.py install' first, but only because i haven't
 #   figured out how to get insights-client to use the config from this directory
 #
-#   I've only tested this on RHEL7
-#
-# Before you run this script
-#   1) make sure your machine has a reasonable unique hostname 'cause that's the only
-#        way to find it on the server.  It can be anything, just don't leave it 'localhost'. 
-#      sudo hostname myveryownhostname    # for example
-#
-#   2) make sure the machine is subcribed and registered with Red Hat
-#        subscription-manager register --auto-attach
-#                     # it will ask for Red Hat Customer Portal username and password
-#
-#   3) create a config file
-#        # from within this directory
-#        cp etc/redhat-access-insights.conf .
-#        # then edit it to add
-#        auto_config=False
-#        no_schedule=True
-#        username=YOUR RED HAT PORTAL USERNAME
-#        password=YOUR RED HAT PORTAL PASSWORD
-#        upload_url=http://IPADDR:PORT/r/insights/uploads
-#        # IPADDR is the ip addr of the host where you are running the insights-engine
-#        # PORT is likely to be 8080 if you are running the insights-engine directly
-#        #                to be something like 32XXXX if you are running insights-engine in a container
-#        #
-#        # If you are running insights-engin in a container, get the host port number liked to
-#        # the container port 8080
-#        #   sudo docker port CONTAINER_NAME 8080
-#
-#   Now you can run this script
 
 set -e
     # -e fail the whole script if any command fails
