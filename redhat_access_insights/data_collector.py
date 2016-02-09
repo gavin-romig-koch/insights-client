@@ -283,29 +283,30 @@ class DataCollector(object):
         full_path = self.archive.get_full_archive_path('/branch_info')
         write_file_with_text(full_path, json.dumps(branch_info))
 
-    def _copy_file_with_pattern(self, path, patterns, exclude, container_fs):
+    def _copy_file_with_pattern(self, path_in_container, patterns, exclude, container_fs):
         """
         Copy file, selecting only lines we are interested in
         """
-        full_path = self.archive.get_full_archive_path(path)
 
-        # append container filesystem path to filename
         if container_fs:
-            if container_fs.endswith('/'):
-                container_fs = container_fs.rstrip('/')
-            path = os.path.realpath(container_fs) + path
+            # reconstruct the path by stripping off the container
+            path = '/' + os.path.relpath(path_in_container, container_fs)
+        else:
+            path = path_in_container
 
-        if not os.path.isfile(path):
-            logger.debug("File %s does not exist", path)
+        path_in_archive = self.archive.get_full_archive_path(path)
+
+        if not os.path.isfile(path_in_container):
+            logger.debug("File %s does not exist", path_in_container)
             return
-        logger.debug("Copying %s to %s with filters %s", path, full_path, str(patterns))
+        logger.debug("Copying %s to %s with filters %s", path_in_container, path_in_archive, str(patterns))
 
         cmd = []
         # shlex.split doesn't handle special characters well
         cmd.append("/bin/sed".encode('utf-8'))
         cmd.append("-rf".encode('utf-8'))
         cmd.append(constants.default_sed_file.encode('utf-8'))
-        cmd.append(path.encode('utf8'))
+        cmd.append(path_in_container.encode('utf8'))
         sedcmd = Popen(cmd,
                        stdout=PIPE)
 
@@ -342,22 +343,29 @@ class DataCollector(object):
         if patterns is None and exclude is None:
             output = sedcmd.communicate()[0]
 
-        write_file_with_text(full_path, output.decode('utf-8', 'ignore').strip())
+        write_file_with_text(path_in_archive, output.decode('utf-8', 'ignore').strip())
 
     def copy_file_with_pattern(self, path, patterns, exclude, container_fs):
         """
         Copy a single file or regex, creating the necessary directories
         But grepping for pattern(s)
         """
-        if "*" in path:
-            paths = _expand_paths(path)
-            if not paths:
-                logger.debug("Could not expand %s", path)
-                return
-            for path in paths:
-                self._copy_file_with_pattern(path, patterns, exclude, container_fs)
+
+        if container_fs:
+            # join container and path
+            path_in_container = os.path.join(container_fs, path.lstrip('/'))
         else:
-            self._copy_file_with_pattern(path, patterns, exclude, container_fs)
+            path_in_container = path
+
+        if "*" in path:
+            paths = _expand_paths(path_in_container)
+            if not paths:
+                logger.debug("Could not expand %s", path_in_container)
+                return
+            for each_path_in_container in paths:
+                self._copy_file_with_pattern(each_path_in_container, patterns, exclude, container_fs)
+        else:
+            self._copy_file_with_pattern(path_in_container, patterns, exclude, container_fs)
 
     def done(self, config, rm_conf):
         """
