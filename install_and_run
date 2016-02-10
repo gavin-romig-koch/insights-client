@@ -14,4 +14,18 @@ python setup.py install
 
 cp redhat-access-insights.conf /etc/redhat-access-insights/redhat-access-insights.conf
 
+
+# Run in 'normal' mode first just to be sure we haven't broken anything
 python redhat_access_insights/__init__.py --register
+
+# Run in 'container' mode
+#  the --fs argument is the image you want to upload for analysis
+#     expanded to a directory tree
+#     you must create a directory tree that looks like a root file system
+#     something that contains the files that Insights looks for
+#
+#  the --name argument is the name of the image
+#       can be anything at this point
+#       it is stuck in where 'hostname' is used for hosts
+
+python redhat_access_insights/__init__.py --container --fs /root/gamma/jamma/test --name containertest
