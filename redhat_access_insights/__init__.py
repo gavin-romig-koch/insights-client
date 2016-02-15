@@ -216,7 +216,7 @@ def collect_data_and_upload(config, options, rc=0):
             logger.info('Uploading Insights data,'
                         ' this may take a few minutes')
             for tries in range(options.retries):
-                upload = pconn.upload_archive(tar_file, collection_duration)
+                upload = pconn.upload_archive(tar_file, collection_duration, container_name=options.container_name)
                 if upload.status_code == 201:
                     write_lastupload_file()
                     logger.info("Upload completed successfully!")

@@ -121,6 +121,10 @@ def generate_machine_id(new=False):
         _write_machine_id(machine_id)
     return str(machine_id).strip()
 
+def generate_container_id(container_name):
+    # container id is a uuid in the namespace of the machine
+    return str(uuid.uuid5(uuid.UUID(generate_machine_id()),container_name))
+
 
 def delete_machine_id():
     '''

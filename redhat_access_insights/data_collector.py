@@ -12,7 +12,7 @@ import logging
 import six
 from tempfile import NamedTemporaryFile
 from soscleaner import SOSCleaner
-from utilities import determine_hostname, _expand_paths, write_file_with_text
+from utilities import determine_hostname, _expand_paths, write_file_with_text, generate_container_id
 from constants import InsightsConstants as constants
 
 APP_NAME = constants.app_name
@@ -330,6 +330,15 @@ class DataCollector(object):
             return
         logger.debug("Copying %s to %s with filters %s", path_on_disk, path_in_archive, str(patterns))
 
+        if container_fs and path_to_collect == "/etc/redhat-access-insights/machine-id":
+            output = generate_container_id(self.container_name)
+        else:
+            output = self._copy_file_using_sed_and_grep(path_on_disk, patterns, exclude)
+
+        write_file_with_text(path_in_archive, output.decode('utf-8', 'ignore').strip())
+
+    def _copy_file_using_sed_and_grep(self, path_on_disk, patterns, exclude):
+
         cmd = []
         # shlex.split doesn't handle special characters well
         cmd.append("/bin/sed".encode('utf-8'))
@@ -372,7 +381,7 @@ class DataCollector(object):
         if patterns is None and exclude is None:
             output = sedcmd.communicate()[0]
 
-        write_file_with_text(path_in_archive, output.decode('utf-8', 'ignore').strip())
+        return output
 
     def copy_file_with_pattern(self, paths_to_collect, patterns, exclude, container_fs):
         """

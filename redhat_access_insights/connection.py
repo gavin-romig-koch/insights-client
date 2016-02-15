@@ -10,6 +10,7 @@ import traceback
 import logging
 from utilities import (determine_hostname,
                        generate_machine_id,
+                       generate_container_id,
                        delete_unregistered_file,
                        write_unregistered_file)
 from cert_auth import rhsmCertificate
@@ -595,7 +596,7 @@ class InsightsConnection(object):
         else:
             return (message, client_hostname, "None", "")
 
-    def upload_archive(self, data_collected, duration, cluster=None):
+    def upload_archive(self, data_collected, duration, cluster=None, container_name=None):
         """
         Do an HTTPS Upload of the archive
         """
@@ -608,6 +609,8 @@ class InsightsConnection(object):
 
         if cluster:
             upload_url = self.upload_url + '/' + cluster + "?cluster=True"
+        elif container_name:
+            upload_url = self.upload_url + '/' + generate_container_id(container_name)
         else:
             upload_url = self.upload_url + '/' + generate_machine_id()
         logger.debug("Uploading %s to %s", data_collected, upload_url)
