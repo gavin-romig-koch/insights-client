@@ -10,6 +10,7 @@ import traceback
 import logging
 from utilities import (determine_hostname,
                        generate_machine_id,
+                       generate_analysis_target_id,
                        delete_unregistered_file,
                        write_unregistered_file)
 from cert_auth import rhsmCertificate
@@ -361,9 +362,12 @@ class InsightsConnection(object):
             sys.exit(1)
         sys.exit(rc)
 
-    def handle_fail_rcs(self, req):
+    def handle_fail_rcs(self, req, just_errors=False):
         """
         Bail out if we get a 401 and leave a message
+
+        Set just_errors to True for registration of images.  We just want to say what went
+        wrong, not change things on the host
         """
         if req.status_code >= 400:
             logger.error("ERROR: Upload failed!")
@@ -377,9 +381,11 @@ class InsightsConnection(object):
                 logger.debug("HTTP Response Text: %s", req.text)
             if req.status_code == 402:
                 # failed registration because of entitlement limit hit
-                from schedule import InsightsSchedule
-                InsightsSchedule(set_cron=False).remove_scheduling()
-                logger.debug('Registration failed by 402 error. Removed automatic scheduling.')
+                logger.debug('Registration failed by 402 error.')
+                if not just_error:
+                    from schedule import InsightsSchedule
+                    InsightsSchedule(set_cron=False).remove_scheduling()
+                    logger.debug('Removed automatic scheduling.')
                 try:
                     logger.error(req.json()["message"])
                 except LookupError:
@@ -400,7 +406,8 @@ class InsightsConnection(object):
                 except LookupError:
                     unreg_date = "412, but no unreg_date or message"
                     logger.debug("HTTP Response Text: %s", req.text)
-                write_unregistered_file(unreg_date)
+                if not just_error:
+                    write_unregistered_file(unreg_date)
             sys.exit(1)
 
     def get_satellite5_info(self, branch_info):
@@ -445,13 +452,10 @@ class InsightsConnection(object):
 
         return branch_info
 
-    def create_system(self, options, new_machine_id=False):
+    def create_system(self, options, machine_id, client_hostname):
         """
         Create the machine via the API
         """
-        client_hostname = determine_hostname()
-        machine_id = generate_machine_id(new_machine_id)
-
         try:
             branch_info = self.branch_info()
             remote_branch = branch_info['remote_branch']
@@ -536,11 +540,15 @@ class InsightsConnection(object):
         logger.debug("PUT group status: %d", put_group.status_code)
         logger.debug("PUT Group: %s", put_group.json())
 
-    def api_registration_check(self):
+    def api_registration_check(self, machine_id=None):
         '''
         Check registration status through API
         '''
-        machine_id = generate_machine_id()
+        if machine_id == None:
+            machine_id = generate_machine_id()
+            just_errors = False
+        else:
+            just_errors = True
         try:
             res = self.session.get(self.api_url + '/v1/systems/' + machine_id)
         except requests.ConnectionError as e:
@@ -551,7 +559,7 @@ class InsightsConnection(object):
         except KeyError:
             # no record of this machine, machine was never registered
             # empty json object
-            return None
+            return None if not just_errors else False
         except ValueError:
             # bad response, no json object
             return False
@@ -560,7 +568,7 @@ class InsightsConnection(object):
             return True
         else:
             # machine has been unregistered, this is a timestamp
-            return unreg_status
+            return unreg_status if not just_errors else False
 
     def unregister(self):
         """
@@ -577,22 +585,38 @@ class InsightsConnection(object):
             logger.debug(e)
             logger.error("Could not unregister this system")
 
-    def register(self, options):
+    # For containers and images we must register the container with the API, in
+    # addition to registering the host.  The machine_id (system_id) of the
+    # container/image depends upon the machine_id (system_id) of the host.
+    #
+    # When registering the container we don't want to change anything on the host
+    #
+    def register(self, options, machine_id=None, client_hostname=None):
         """
         Register this machine
         """
 
-        delete_unregistered_file()
+        # If we are given a machine_id then we can't choose another, and we
+        #  can't change anything on the host
+        if machine_id:
+            just_errors = True
+        else:
+            just_errors = False
+            delete_unregistered_file()
+            machine_id = generate_machine_id(False)
 
-        client_hostname = determine_hostname()
+        if client_hostname == None:
+            client_hostname = determine_hostname()
+
         # This will undo a blacklist
         logger.debug("API: Create system")
-        system = self.create_system(options, new_machine_id=False)
+        system = self.create_system(options, machine_id, client_hostname)
 
         # If we get a 409, we know we need to generate a new machine-id
-        if system.status_code == 409:
-            system = self.create_system(options, new_machine_id=True)
-        self.handle_fail_rcs(system)
+        if not just_errors and system.status_code == 409:
+            machine_id = generate_machine_id(True)
+            system = self.create_system(options, machine_id, client_hostname)
+        self.handle_fail_rcs(system, just_errors=just_errors)
 
         logger.debug("System: %s", system.json())
 
@@ -608,6 +632,22 @@ class InsightsConnection(object):
             return (message, client_hostname, "None", options.display_name)
         else:
             return (message, client_hostname, "None", "")
+
+
+    # we register a container or image just like a host, except that we can't choose another
+    # random machine_id/system_id, and we can't change things (like registration status) on
+    # the host
+    #
+    # machine_id is now called system_id (because they aren't all machines anymore), over
+    #   time we should change all "machine_id"s to "system_id"
+    # similar comments for hostname and system_name
+    def register_container(self, options):
+        system_id = generate_analysis_target_id(options.collection_target, options.container_name)
+        if not self.api_registration_check(machine_id=system_id):
+            system_name = options.container_name
+            return self.register(options, machine_id=system_id, client_hostname=system_name)
+        else:
+            return (None, system_name, "None", "")
 
     def upload_archive(self, data_collected, duration, cluster=None, base_name=None):
         """

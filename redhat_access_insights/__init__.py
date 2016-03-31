@@ -257,6 +257,10 @@ def collect_data_and_upload(config, options, rc=0):
         if not options.offline:
             logger.info('Uploading Insights data,'
                         ' this may take a few minutes')
+
+            if options.collection_target == "docker_image":
+                container_register(pconn, options)
+
             for tries in range(options.retries):
                 upload = pconn.upload_archive(tar_file, collection_duration,
                                               base_name=generate_analysis_target_id(
@@ -340,6 +344,17 @@ def register(config, group_id=None):
     pconn = InsightsConnection(config)
     return pconn.register(group_id)
 
+def container_register(pconn, options):
+    message, hostname, opt_group, display_name = pconn.register_container(options)
+    if message != None:
+        if options.display_name is None and options.group is None:
+            logger.info('Successfully registered %s', hostname)
+        elif options.display_name is None:
+            logger.info('Successfully registered %s in group %s', hostname, opt_group)
+        else:
+            logger.info('Successfully registered %s as %s in group %s', hostname, display_name,
+                        opt_group)
+            logger.info(message)
 
 def set_up_options(parser):
     """
