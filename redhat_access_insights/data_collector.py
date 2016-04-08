@@ -533,7 +533,7 @@ class DataCollector(object):
 
         write_file_with_text(archive_path, output.decode('utf-8', 'ignore').strip())
 
-    def copy_file_with_pattern(self, path, patterns, exclude):
+    def copy_file_with_pattern(self, path, patterns, exclude, archive_file_name=None):
         """
         Copy a single file or regex, creating the necessary directories
         But grepping for pattern(s)
@@ -549,9 +549,9 @@ class DataCollector(object):
                 logger.debug("Could not expand %s", real_path)
                 return
             for p in expanded_paths:
-                self._copy_file_with_pattern(p, patterns, exclude)
+                self._copy_file_with_pattern(p, patterns, exclude, archive_file_name=archive_file_name)
         else:
-            self._copy_file_with_pattern(real_path, patterns, exclude)
+            self._copy_file_with_pattern(real_path, patterns, exclude, archive_file_name=archive_file_name)
 
     def _process_file_spec(self, spec, exclude, options):
 
@@ -602,28 +602,28 @@ class DataCollector(object):
         else:
             exclude = None
 
-        for spec_group in conf['specs']:
+        for spec_group in conf['specs'].values():
             if self.target_type in spec_group:
-                spec = spec_group[self.target_type]
-                if 'file' in spec:
-                    if rm_conf:
-                        try:
-                            if spec['file'] in rm_conf['files']:
-                                logger.warn("WARNING: Skipping file %s", spec['file'])
-                                continue
-                        except LookupError:
-                            pass
-                    self._process_file_spec(each_spec, exclude, options)
-                elif 'command' in spec:
-                    if rm_conf:
-                        try:
-                            if each_spec['command'] in rm_conf['commands']:
-                                logger.warn("WARNING: Skipping command %s", each_spec['command'])
-                                continue
-                        except LookupError:
-                            pass
-                    self._process_command_spec(each_spec, exclude, options)
-        logger.debug("Specs processing complete.")
+                for each_spec in spec_group[self.target_type]:
+                    if 'file' in each_spec:
+                        if rm_conf:
+                            try:
+                                if each_spec['file'] in rm_conf['files']:
+                                    logger.warn("WARNING: Skipping file %s", each_spec['file'])
+                                    continue
+                            except LookupError:
+                                pass
+                        self._process_file_spec(each_spec, exclude, options)
+                    elif 'command' in each_spec:
+                        if rm_conf:
+                            try:
+                                if each_spec['command'] in rm_conf['commands']:
+                                    logger.warn("WARNING: Skipping command %s", each_spec['command'])
+                                    continue
+                            except LookupError:
+                                pass
+                        self._process_command_spec(each_spec, exclude, options)
+            logger.debug("Specs processing complete.")
 
     def done(self, config, rm_conf, collection_rules=None):
         """

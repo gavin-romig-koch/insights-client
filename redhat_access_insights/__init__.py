@@ -246,7 +246,7 @@ def collect_data_and_upload(config, options, rc=0, targets=constants.default_tar
             elapsed = (time.clock() - start)
             logger.debug("Data Collection Elapsed Time: %s", elapsed)
 
-            dc.write_analysis_target(options.collection_target, collection_rules)
+            dc.write_analysis_target(t['type'], collection_rules)
             dc.write_machine_id(
                 generate_analysis_target_id(t['type'], t['name']),
                 collection_rules)
@@ -262,7 +262,6 @@ def collect_data_and_upload(config, options, rc=0, targets=constants.default_tar
             logger.debug("File Collection Elapsed Time: %s", elapsed)
 
             dc.write_branch_info(branch_info)
-            obfuscate = config.getboolean(APP_NAME, "obfuscate")
 
         # include rule refresh time in the duration
         collection_duration = (time.clock() - collection_start) + collection_elapsed
@@ -272,7 +271,7 @@ def collect_data_and_upload(config, options, rc=0, targets=constants.default_tar
             mounted_image.close()
 
         if not options.no_tar_file:
-            tar_file = dc.done(config, rm_conf)
+            tar_file = dc.done(config, rm_conf, collection_rules=collection_rules)
             if not options.offline:
                 logger.info('Uploading Insights data,'
                             ' this may take a few minutes')
@@ -297,6 +296,7 @@ def collect_data_and_upload(config, options, rc=0, targets=constants.default_tar
                                          constants.default_log_file)
                             rc = 1
 
+                obfuscate = config.getboolean(APP_NAME, "obfuscate")
                 if not obfuscate and not options.keep_archive:
                     dc.archive.delete_tmp_dir()
                 else:
