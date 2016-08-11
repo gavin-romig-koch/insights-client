@@ -178,6 +178,11 @@ def set_up_options(parser):
                      action="store",
                      dest="only",
                      default=None)
+    group.add_option('--inventory',
+                     help="display the list of hosts registered with Insights",
+                     action="store_true",
+                     dest="inventory",
+                     default=False)
     # this option is for when we run inside a container, so
     #  that another container is not spawned
     #  undocumented option

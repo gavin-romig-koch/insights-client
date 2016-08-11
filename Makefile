@@ -38,7 +38,9 @@ $(RPM): $(SRPM)
 	rpmbuild --buildroot $(RPMTOP)/BUILDROOT --define="_topdir $(RPMTOP)" --rebuild $<
 
 install: $(RPM)
-	sudo yum install -y $(RPM)
+	if ! sudo dnf reinstall -y $(RPM); then \
+          sudo dnf install -y $(RPM);           \
+        fi
 
 clean:
 	rm -rf dist

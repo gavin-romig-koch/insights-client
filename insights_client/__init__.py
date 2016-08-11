@@ -158,6 +158,9 @@ def handle_startup():
         # exit with !status, 0 for True, 1 for False
         sys.exit(not reg_check['status'])
 
+    if InsightsClient.options.inventory:
+        sys.exit(InsightsConnection().inventory())
+        
     if InsightsClient.options.support:
         support = InsightsSupport()
         support.collect_support_info()
@@ -628,7 +631,7 @@ def _main():
     if os.geteuid() is not 0:
         sys.exit("Red Hat Insights must be run as root")
 
-    sys.excepthook = handle_exception
+    #sys.excepthook = handle_exception
 
     parser = optparse.OptionParser()
     set_up_options(parser)

@@ -553,14 +553,25 @@ class InsightsConnection(object):
         logger.debug("PUT Group: %s", put_group.json())
 
     def api_registration_check(self):
+        url = self.api_url + '/v1/systems/status'
+        logger.info("Getting Status from %s", url)
+        status_result = self.session.get(url)
+        logger.info("Status status: %s %s %s",
+                     status_result.status_code, status_result.reason, status_result.text)
+        logger.info("Status duration: %s", status_result.elapsed)
         '''
         Check registration status through API
         '''
         machine_id = generate_machine_id()
+        url = self.api_url + '/v1/systems/' + machine_id
+        logger.info("Getting registration status from: %s", url)
         try:
-            res = self.session.get(self.api_url + '/v1/systems/' + machine_id)
+            res = self.session.get(url)
         except requests.ConnectionError:
             return False
+        logger.info("Registration Check status: %s %s %s",
+                     res.status_code, res.reason, res.text)
+        logger.info("Status duration: %s", res.elapsed)
         # check the 'unregistered_at' key of the response
         try:
             unreg_status = json.loads(res.content)['unregistered_at']
@@ -659,4 +670,67 @@ class InsightsConnection(object):
         logger.debug("Upload status: %s %s %s",
                      upload.status_code, upload.reason, upload.text)
         logger.debug("Upload duration: %s", upload.elapsed)
+
+        import pprint
+        pp = pprint.PrettyPrinter(indent=4)
+        logger.info(pp.pformat(upload.json()))
+        
         return upload
+
+    def make_api_url(self, api):
+        return self.api_url + api
+    
+    def get(self, title, api):
+        # raises requests.ConnectionError
+        #   actually raises anything that self.session.get raises
+        #
+        url = self.make_api_url(api)
+        logger.info("Getting %s from: %s", title, url)
+        return self.session.get(url)
+
+    def trim(self, s, max):
+        if len(s) < max:
+            return s
+        else:
+            msg = "... string trimmed ..."
+            return s[:max - len(msg)] + msg
+
+    def get_json(self, title, api):
+        res = self.get(title, api)
+
+        if res.status_code != 200:
+            raise Exception("GET %s to get %s failed: %s %s %s" % (self.make_api_url(api), title, res.status_code, res.reason, self.trim(res.text,400)))
+
+        return res.json()
+
+    def inventory(self):
+        import re
+        hostname_pattern = re.compile(r"^[-._a-zA-Z0-9]+$")
+        def isok(s):
+            return s and hostname_pattern.match(s)
+
+        systems = self.get_json("systems", "/v1/systems")
+        names = []
+        for each in systems:
+            # print out the first of display_name, hostname, toString
+            # that makes for a valid hostname
+            for i in [ "display_name", "hostname", "toString"]:
+                if isok(each[i]):
+                    names.append(each[i])
+                    break
+        
+        logger.info("INVENTORY %s" % json.dumps({ "insights" : { "hosts" : names, "_meta" : { "hostvars" : {} }}} ))
+        return 0
+
+    def reports(self):
+        import pprint
+        pp = pprint.PrettyPrinter(indent=4)
+        try:
+            
+            reports = self.get_json("reports", "/v1/reports")
+            logger.info(pp.pformat(reports))
+
+        except Exception as e:
+            logger.error(e)
+            return 88
+        return 0
