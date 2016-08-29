@@ -111,6 +111,11 @@ def set_up_options(parser):
                            'along with the host.',
                       action='store_true',
                       dest='container_mode')
+    parser.add_option('--ansible-inventory',
+                      help="get list of machines from Insights, output as an Ansible dynamic inventory",
+                     action="store_true",
+                     dest="inventory",
+                     default=False)
     group = optparse.OptionGroup(parser, "Debug options")
     parser.add_option('--version',
                       help="Display version",
@@ -178,11 +183,6 @@ def set_up_options(parser):
                      action="store",
                      dest="only",
                      default=None)
-    group.add_option('--inventory',
-                     help="display the list of hosts registered with Insights",
-                     action="store_true",
-                     dest="inventory",
-                     default=False)
     # this option is for when we run inside a container, so
     #  that another container is not spawned
     #  undocumented option

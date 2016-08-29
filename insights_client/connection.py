@@ -719,7 +719,7 @@ class InsightsConnection(object):
                     names.append(each[i])
                     break
         
-        logger.info("INVENTORY %s" % json.dumps({ "insights" : { "hosts" : names, "_meta" : { "hostvars" : {} }}} ))
+        print(json.dumps({ "insights" : { "hosts" : names, "_meta" : { "hostvars" : {} }}} ))
         return 0
 
     def reports(self):

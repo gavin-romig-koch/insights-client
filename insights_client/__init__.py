@@ -70,14 +70,14 @@ def set_up_logging():
     if InsightsClient.options.to_stdout and not InsightsClient.options.verbose:
         InsightsClient.options.quiet = True
 
-    # Send anything INFO+ to stdout and log
-    stdout_handler = logging.StreamHandler(sys.stdout)
+    # Send anything INFO+ to stderr and log
+    stderr_handler = logging.StreamHandler(sys.stderr)
     if not InsightsClient.options.verbose:
-        stdout_handler.setLevel(logging.INFO)
+        stderr_handler.setLevel(logging.INFO)
     if InsightsClient.options.quiet:
-        stdout_handler.setLevel(logging.ERROR)
+        stderr_handler.setLevel(logging.ERROR)
     if not InsightsClient.options.silent:
-        logging.root.addHandler(stdout_handler)
+        logging.root.addHandler(stderr_handler)
 
     logging.root.addHandler(handler)
 
